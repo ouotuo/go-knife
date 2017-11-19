@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/containous/traefik/log"
+	"log"
 )
 
 func CreateGinFunc(fun interface{})func(*gin.Context){
@@ -55,13 +55,13 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 	if numOut==1{
 		//(error)
 		var out1=funType.Out(0)
-		if out1!=reflect.Type(error(nil)){
+		if out1!=reflect.TypeOf(error(nil)){
 			log.Fatalf("func[%s]()(error),out[0] should error",name)
 		}
 	}else if numOut==2{
 		//(error,data)
 		var out1=funType.Out(0)
-		if out1!=reflect.Type(error(nil)){
+		if out1!=reflect.TypeOf(error(nil)){
 			log.Fatalf("func[%s]()(error,data),out[0] should error",name)
 		}
 	}else{

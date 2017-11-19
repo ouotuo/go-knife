@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"fmt"
 	"encoding/json"
-	"../bean"
+	"github.com/ouotuo/go-knife/bean"
 )
 
 /***** context ****/
