@@ -9,6 +9,7 @@ const(
 type ReqContext interface {
 	GetIp()string
 	GetHeader(name string)string
+	GetContentType()string
 	Bind(form interface{})error
 }
 
@@ -49,7 +50,7 @@ func(cw *ContextWrap)GetUserName()string{
 	return cw.userName
 }
 func(cw *ContextWrap)GetContextType()string{
-	return cw.c.GetHeader(HEADER_CONTEXT_TYPE)
+	return cw.c.GetContentType()
 }
 
 func(cw *ContextWrap)Bind(form interface{})error{

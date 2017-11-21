@@ -7,6 +7,8 @@ import (
 	"log"
 )
 
+var _P_ERROR_TYPE=reflect.TypeOf((*error)(nil))
+var _ERROR_TYPE=_P_ERROR_TYPE.Elem()
 func CreateGinFunc(fun interface{})func(*gin.Context){
 	var funType=reflect.TypeOf(fun)
 
@@ -38,34 +40,34 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 		//(contextWrap,form)
 		var arg1=funType.In(0)
 		if arg1!=reflect.TypeOf(&ContextWrap{}){
-			log.Fatalf("func[%s](ContextWrap,form),arguments[0] should ContextWrap",name)
+			log.Fatalf("%s,arguments[0] should ContextWrap",name)
 		}
 		needContextWrap=true
-		var arg2=funType.In(0)
+		var arg2=funType.In(1)
 		if arg2.Kind()!=reflect.Ptr{
-			log.Fatalf("func[%s](ContextWrap,form),arguments[1] should ptr to struct ",name)
+			log.Fatalf("%s,arguments[1] should ptr to struct ",name)
 		}
 		needBindForm=true
 		formType=arg2
 	}else{
-		log.Fatalf("func[%s] arguments.len=%d > 2",name,numIn)
+		log.Fatalf("%s,arguments.len=%d > 2",name,numIn)
 	}
 
 	//check out
 	if numOut==1{
 		//(error)
 		var out1=funType.Out(0)
-		if out1!=reflect.TypeOf(error(nil)){
-			log.Fatalf("func[%s]()(error),out[0] should error",name)
+		if out1!=_ERROR_TYPE{
+			log.Fatalf("%s,out[0] should error",name)
 		}
 	}else if numOut==2{
 		//(error,data)
 		var out1=funType.Out(0)
-		if out1!=reflect.TypeOf(error(nil)){
-			log.Fatalf("func[%s]()(error,data),out[0] should error",name)
+		if out1!=_ERROR_TYPE{
+			log.Fatalf("%s,out[0] should error",name)
 		}
 	}else{
-		log.Fatalf("func[%s]()(error,data),out.len=%d,>2",name,numOut)
+		log.Fatalf("%s,out.len=%d,>2",name,numOut)
 	}
 
 	var funVal =reflect.ValueOf(fun)

@@ -23,6 +23,9 @@ func NewGinContextWrap(c *gin.Context)(cw *ContextWrap){
 func (gc *ginReqContext)GetIp()string{
 	return gc.c.ClientIP()
 }
+func(gc *ginReqContext)GetContentType()string{
+	return gc.c.ContentType()
+}
 func( gc *ginReqContext)GetHeader(name string)string{
 	return gc.c.GetHeader(name)
 }
@@ -32,6 +35,9 @@ func( gc *ginReqContext)Bind(form interface{})(err error){
 	switch contentType {
 	case gin.MIMEJSON:
 		err=ginBindJson(gc.c,form)
+		if err==nil{
+			err=bean.ValidBean(form)
+		}
 		return
 	case gin.MIMEPOSTForm,gin.MIMEMultipartPOSTForm:
 	default:

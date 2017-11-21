@@ -10,7 +10,7 @@ import(
 
 
 const(
-	TAG_BEAN="bean"
+	TAG_BEAN="json"
 	TAG_REQUIRE="require"
 	TAG_REGEXP="regexp"
 	TAG_DEFAULT="default"
@@ -87,8 +87,6 @@ func setBeanMap(pB interface{},prefix string,vals map[string][]string)(err error
 		return
 	}
 
-
-
 	//对所有field循环
 	eleType:=ele.Type()
 	var nfLen=ele.NumField()
@@ -108,7 +106,10 @@ func setBeanMap(pB interface{},prefix string,vals map[string][]string)(err error
 		var key string=sf.Tag.Get(TAG_BEAN)
 		if key==""{
 			key=fmt.Sprintf("%s%s",strings.ToLower(sf.Name[:1]),sf.Name[1:])
+		}else if key=="-"{
+			continue
 		}
+
 		key=prefix+key
 		if IsFieldPrimitive(nf)==false{
 			//不是基础类型
@@ -159,6 +160,107 @@ func setBeanMap(pB interface{},prefix string,vals map[string][]string)(err error
 
 			//convert to value
 			err=SetPrimitiveFieldStringValue(nf,str)
+		}
+
+		//get error
+		if err!=nil{
+			return
+		}
+	}
+
+	return
+}
+
+func ValidBean(pb interface{})(error){
+	return validBean(pb,"")
+}
+
+
+//设置struct的属性
+func validBean(pB interface{},prefix string)(err error){
+	beanVal:=reflect.ValueOf(pB)
+
+	if beanVal.Kind()!=reflect.Ptr {
+		//必须是指针
+		err=fmt.Errorf("pB argument should pointer")
+		return
+	}
+
+	ele:=beanVal.Elem()
+
+	if ele.Kind()!=reflect.Struct {
+		return
+	}
+
+	//对所有field循环
+	eleType:=ele.Type()
+	var nfLen=ele.NumField()
+
+	if prefix!=""{
+		prefix=prefix+"."
+	}
+
+	for i:=0;i<nfLen;i++{
+		sf:=eleType.Field(i)
+		nf:=ele.Field(i)
+
+		if nf.CanSet()==false{
+			continue
+		}
+
+		var key string=sf.Tag.Get(TAG_BEAN)
+		if key==""{
+			key=fmt.Sprintf("%s%s",strings.ToLower(sf.Name[:1]),sf.Name[1:])
+		}
+		key=prefix+key
+		if IsFieldPrimitive(nf)==false{
+			//不是基础类型
+			if nf.Kind()==reflect.Ptr{
+				//是不是必须的
+
+				if nf.IsNil(){
+					//为nil，检查required
+					isRequired,_:=strconv.ParseBool(sf.Tag.Get(TAG_REQUIRE))
+					if isRequired==true{
+						err=fmt.Errorf("%s is required",key)
+						return
+					}
+				}else{
+					err=validBean(nf.Interface(),key)
+				}
+			}
+		}else{
+			isRequired,_:=strconv.ParseBool(sf.Tag.Get(TAG_REQUIRE))
+			var checkRegexp string=sf.Tag.Get(TAG_REGEXP)
+
+			if isRequired==false && checkRegexp==""{
+				continue
+			}
+
+			var str=fmt.Sprintf("%v",nf.Interface())
+			//validate
+
+			if str==""{
+				//没有数据
+				if isRequired==true{
+					err=fmt.Errorf("%s require",key)
+					return
+				}
+				continue
+			}
+
+			if checkRegexp!=""{
+				var r *regexp.Regexp
+				r,err=regexp.Compile(checkRegexp)
+				if err!=nil{
+					err=fmt.Errorf("%s regexp wrong format",key)
+					return
+				}
+				if r.MatchString(str)==false{
+					err=fmt.Errorf("%s value not match regexp",key)
+					return
+				}
+			}
 		}
 
 		//get error

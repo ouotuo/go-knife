@@ -98,7 +98,7 @@ func TestSetBeanMap(t *testing.T) {
 		RegexpInt int `regexp:"^[1-3]{2,2}$"`
 		DefaultInt int `default:"88"`
 		int `default:"88"`
-		AliasInt int `bean:"a"`
+		AliasInt int `json:"a"`
 	}
 	mapParams=map[string][]string{
 		"string":[]string{"hello"},
@@ -129,7 +129,7 @@ func TestSetBeanMap(t *testing.T) {
 	//loop
 	type bag struct{
 		Name string
-		Price float64 `bean:"p"`
+		Price float64 `json:"p"`
 	}
 
 	type student struct{
@@ -147,4 +147,38 @@ func TestSetBeanMap(t *testing.T) {
 	assert.True(t,sb.Name=="abc")
 	assert.True(t,sb.Bag.Name=="haha","set ptr field")
 	assert.True(t,sb.Bag.Price==99.9)
+}
+
+func TestCheckBean(t *testing.T) {
+	type bag struct{
+		Name string `regexp:"^[a-z]+$"`
+		Price float64 `json:"p"`
+	}
+
+	type student struct{
+		Name string
+		Bag *bag `require:"true"`
+	}
+
+	b:=&bag{
+		Name:"888",
+	}
+	err:=ValidBean(b)
+	assert.NotNil(t,err,"field regexp valid fail")
+
+	s:=&student{
+		Name:"xiao ming",
+	}
+	err=ValidBean(s)
+	assert.NotNil(t,err,"field required valid fail")
+
+	s=&student{
+		Name:"haha",
+		Bag:&bag{
+			Name:"aa",
+		},
+	}
+	err=ValidBean(s)
+	assert.Nil(t,err,"field valid ok fail")
+
 }
