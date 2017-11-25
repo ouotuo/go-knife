@@ -271,3 +271,6 @@ func validBean(pB interface{},prefix string)(err error){
 
 	return
 }
+
+
+

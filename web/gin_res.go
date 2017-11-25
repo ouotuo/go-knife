@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
+	"github.com/go-errors/errors"
 )
 
 var _P_ERROR_TYPE=reflect.TypeOf((*error)(nil))
@@ -40,7 +41,7 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 		//(contextWrap,form)
 		var arg1=funType.In(0)
 		if arg1!=reflect.TypeOf(&ContextWrap{}){
-			log.Fatalf("%s,arguments[0] should ContextWrap",name)
+			log.Fatalf("%s,arguments[0] should *ContextWrap",name)
 		}
 		needContextWrap=true
 		var arg2=funType.In(1)
@@ -49,7 +50,7 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 		}
 		needBindForm=true
 		formType=arg2
-	}else{
+	}else if numIn>2{
 		log.Fatalf("%s,arguments.len=%d > 2",name,numIn)
 	}
 
@@ -81,6 +82,8 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 		defer func() {
 			if r := recover(); r != nil {
 				log.Printf("execute exception,recover,%v", r)
+				e:=errors.New(r)
+				log.Println(e.ErrorStack())
 				err,ok:=r.(error)
 				if ok{
 					result.SetErrSystemFail(err.Error())
@@ -114,7 +117,7 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 		if numOut>0{
 			//error
 			if outs[0].IsNil()==false{
-				result.SetErrParam(fmt.Sprintf("%v",outs[1].Interface()))
+				result.SetErrParam(fmt.Sprintf("%v",outs[0].Interface()))
 				return
 			}
 		}
