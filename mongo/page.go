@@ -1,0 +1,208 @@
+package mongo
+
+import (
+	"fmt"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
+	"reflect"
+	"math"
+)
+
+
+type PageBean struct{
+	Total int `json:"total"`
+	HasPrev bool `json:"hasPrev"`
+	HasNext bool `json:"hasNext"`
+	PrevId string `json:"prevId"`
+	NextId string `json:"nextId"`
+	List interface{} `json:"list"`
+	PageSize int `json:"pageSize"`
+	TotalPage int `json:"totalPage"`
+}
+
+func (self *PageBean)String()string{
+	return fmt.Sprintf("{total:%d,pageSize:%d,hasPrev:%v,hasNext:%v,prevId:%s,nextId:%s,list:%v}",self.Total,self.PageSize,
+		self.HasPrev,self.HasNext,self.PrevId,self.NextId,self.List)
+}
+
+
+func beginPage(c *mgo.Collection,query map[string]interface{},pageSize int,result interface{})(*PageBean,error){
+	pageBean:=&PageBean{Total:0,HasPrev:false,HasNext:false,PrevId:"",NextId:"",PageSize:pageSize,}
+
+	limit:=pageSize+1
+
+	sortField:="_id"
+	err:=c.Find(query).Sort(sortField).Limit(limit).All(result);if err!=nil {
+		return nil,err
+	}else{
+		v:=reflect.ValueOf(result)
+		ele:=v.Elem()
+		if ele.Len()==limit{
+			//说明还有下一页数据
+			pageBean.HasNext=true
+			lastEle:=ele.Index(pageSize-1).Elem()
+			lastObjectId:=bson.ObjectId(lastEle.FieldByName("Id").String())
+			pageBean.NextId=lastObjectId.Hex()
+			ele.Set(ele.Slice(0,limit-1))
+		}
+
+		pageBean.List=result
+		return pageBean,nil
+	}
+}
+
+func reverseSlice(arr interface{}){
+	v:=reflect.ValueOf(arr)
+	ele:=v.Elem()
+
+	i:=0
+	aLen:=ele.Len()
+	hLen:=ele.Len()/2
+	for ;i<hLen;i++{
+		a:=ele.Index(i)
+		b:=ele.Index(aLen-i-1)
+
+		tmp:=a.Elem()
+		a.Set(b)
+		b.Set(tmp.Addr())
+	}
+}
+
+func endPage(c *mgo.Collection,query map[string]interface{},pageSize int,result interface{})(*PageBean,error){
+	pageBean:=&PageBean{Total:0,HasPrev:false,HasNext:false,PrevId:"",NextId:"",PageSize:pageSize,}
+
+	limit:=pageSize+1
+
+	sortField:="-_id"
+
+	err:=c.Find(query).Sort(sortField).Limit(limit).All(result);if err!=nil {
+		return nil,err
+	}else{
+		v:=reflect.ValueOf(result)
+		ele:=v.Elem()
+		if ele.Len()==limit{
+			//说明还有上一页数据
+			pageBean.HasPrev=true
+			lastEle:=ele.Index(limit-1).Elem()
+			lastObjectId:=bson.ObjectId(lastEle.FieldByName("Id").String())
+			pageBean.PrevId=lastObjectId.Hex()
+			ele.Set(ele.Slice(0,limit-1))
+		}
+		pageBean.List=result
+		reverseSlice(result)
+		return pageBean,nil
+	}
+}
+
+//前一个包括,后一个不包括
+func nextPage(c *mgo.Collection,query map[string]interface{},pageSize int,curId string,result interface{})(*PageBean,error){
+	pageBean:=&PageBean{Total:0,HasPrev:true,HasNext:false,PrevId:curId,NextId:curId,PageSize:pageSize,}
+
+	limit:=pageSize+1
+
+	sortField:="_id"
+
+	curObjId:=bson.ObjectIdHex(curId)
+	if query!=nil{
+		query["_id"]=bson.M{"$gt":curObjId}
+	}else{
+		query=bson.M{"_id":bson.M{"$gt":curObjId}}
+	}
+
+	err:=c.Find(query).Sort(sortField).Limit(limit).All(result);if err!=nil {
+		return nil,err
+	}else{
+		v:=reflect.ValueOf(result)
+		ele:=v.Elem()
+		if ele.Len()==limit{
+			//说明还有下一页数据
+			pageBean.HasNext=true
+			lastEle:=ele.Index(pageSize-1).Elem()
+			lastObjectId:=bson.ObjectId(lastEle.FieldByName("Id").String())
+			pageBean.NextId=lastObjectId.Hex()
+			ele.Set(ele.Slice(0,limit-1))
+		}
+
+		pageBean.List=result
+		return pageBean,nil
+	}
+}
+
+func prevPage(c *mgo.Collection,query map[string]interface{},pageSize int,curId string,result interface{})(*PageBean,error){
+	pageBean:=&PageBean{Total:0,HasPrev:false,HasNext:true,PrevId:"",NextId:curId,PageSize:pageSize,}
+
+	limit:=pageSize+1
+
+	sortField:="-_id"
+
+	curObjId:=bson.ObjectIdHex(curId)
+	if query!=nil{
+		query["_id"]=bson.M{"$lte":curObjId}
+	}else{
+		query=bson.M{"_id":bson.M{"$lte":curObjId}}
+	}
+
+	err:=c.Find(query).Sort(sortField).Limit(limit).All(result);if err!=nil {
+		return nil,err
+	}else{
+		v:=reflect.ValueOf(result)
+		ele:=v.Elem()
+		if ele.Len()==limit{
+			//说明还有上一页数据
+			pageBean.HasPrev=true
+			lastEle:=ele.Index(limit-1).Elem()
+			lastObjectId:=bson.ObjectId(lastEle.FieldByName("Id").String())
+			pageBean.PrevId=lastObjectId.Hex()
+			ele.Set(ele.Slice(0,limit-1))
+		}
+		pageBean.List=result
+		reverseSlice(result)
+		return pageBean,nil
+	}
+}
+
+
+func queryPageBean(c *mgo.Collection,query map[string]interface{},direction string,pageSize int,curId string,result interface{})(*PageBean,error){
+	isNext:=true
+	if direction=="prev"{
+		isNext=false
+	}
+	if isNext==true{
+		if curId!=""{
+			return nextPage(c,query,pageSize,curId,result)
+		}else{
+			return beginPage(c,query,pageSize,result)
+		}
+	}else{
+		if curId!=""{
+			return prevPage(c,query,pageSize,curId,result)
+		}else{
+			return endPage(c,query,pageSize,result)
+		}
+	}
+}
+
+func Page(c *mgo.Collection,query map[string]interface{},direction string,curId string,isCount bool,pageSize int,result interface{})(*PageBean,error){
+	if pageSize<=0{
+		pageSize=10
+	}
+	total:=0
+	var err error
+	if isCount==true{
+		total,err=c.Find(query).Count();if err!=nil{
+			return nil,err
+		}
+	}
+
+	//开始查询
+	pageBean,err:=queryPageBean(c,query,direction,pageSize,curId,result);if err!=nil{
+		return nil,err
+	}
+	pageBean.Total=total
+	if total>0{
+		//分页
+		pageBean.TotalPage=int(math.Ceil(float64(total)/float64(pageSize)))
+	}
+
+	return pageBean,nil
+}

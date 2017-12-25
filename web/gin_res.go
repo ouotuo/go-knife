@@ -90,8 +90,14 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 				}else{
 					result.SetErrSystemFail("error unknown type")
 				}
+				c.JSON(500,result)
+			}else if result.IsOk(){
+				c.JSON(200,result)
+			}else if result.IsErrParam(){
+				c.JSON(400,result)
+			}else{
+				c.JSON(205,result)
 			}
-			c.JSON(200,result)
 		}()
 
 		var index=0
@@ -117,7 +123,7 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 		if numOut>0{
 			//error
 			if outs[0].IsNil()==false{
-				result.SetErrParam(fmt.Sprintf("%v",outs[0].Interface()))
+				result.SetErrExecute(fmt.Sprintf("%v",outs[0].Interface()))
 				return
 			}
 		}

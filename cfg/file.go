@@ -7,6 +7,8 @@ import (
 	"github.com/ouotuo/go-knife/bean"
 )
 
+const DEFAULT_FILE  = "cfg.json"
+
 //从文件加载
 func LoadFromJsonFile(file string,ptr interface{})(err error){
 	f,err:=os.Open(file)
