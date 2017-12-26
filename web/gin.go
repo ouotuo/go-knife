@@ -60,6 +60,21 @@ func( gc *ginReqContext)Bind(form interface{})(err error){
 
 	err=bean.SetBeanMap(form,mapParams)
 
+	//log
+	isDebug,exists:=gc.c.Get(KEY_GIN_LOGGER_DEBUG)
+	if exists && len(mapParams)>0{
+		if isDebug=="true"{
+			var body string
+			bs,err:=json.Marshal(mapParams)
+			if err!=nil{
+				body=string(bs)
+			}else{
+				body=fmt.Sprintf("json.Marshal mapParams error,%v",err)
+			}
+			gc.c.Set(KEY_GIN_LOGGER_BODY,body)
+		}
+	}
+
 	return
 }
 
@@ -70,6 +85,14 @@ func ginBindJson(c *gin.Context,form interface{})(err error){
 		err=fmt.Errorf("read request body error,%s",err)
 	}else{
 		err=json.Unmarshal(body,form)
+
+		//log
+		isDebug,exists:=c.Get(KEY_GIN_LOGGER_DEBUG)
+		if exists{
+			if isDebug=="true"{
+				c.Set(KEY_GIN_LOGGER_BODY,string(body))
+			}
+		}
 	}
 
 	return
