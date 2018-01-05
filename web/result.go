@@ -6,12 +6,24 @@ type Result struct{
 	Data interface{} `json:"data"`
 }
 
+type IResult interface {
+	IsOk()bool
+	SetOk(data interface{})
+	IsErrParam()bool
+	SetErrParam(msg string)
+	IsErrExecute()bool
+	SetErrExecute(msg string)
+	IsErrSystemFail()bool
+	SetErrSystemFail(msg string)
+}
+
 const(
 	ERRCODE_OK=0
 	ERRCODE_PARAM=400
 	ERRCODE_EXECUTE=205
 	ERRCODE_SYSTEM_FAIL=-1
 )
+
 
 func(r *Result)SetResult(errcode int,errmsg string)(*Result){
 	r.Errcode=errcode
@@ -41,5 +53,12 @@ func(r *Result)IsOk()bool{
 
 func(r *Result)IsErrParam()bool{
 	return r.Errcode==ERRCODE_PARAM
+}
+
+func(r *Result)IsErrExecute()bool{
+	return r.Errcode==ERRCODE_EXECUTE
+}
+func(r *Result)IsErrSystemFail()bool{
+	return r.Errcode==ERRCODE_SYSTEM_FAIL
 }
 

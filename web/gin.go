@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"encoding/json"
 	"github.com/ouotuo/go-knife/bean"
+	"reflect"
 )
 
 /***** context ****/
@@ -58,7 +59,9 @@ func( gc *ginReqContext)Bind(form interface{})(err error){
 		}
 	}
 
-	err=bean.SetBeanMap(form,mapParams)
+	if reflect.ValueOf(form).Kind()!=reflect.Slice{
+		err=bean.SetBeanMap(form,mapParams)
+	}
 
 	//log
 	isDebug,exists:=gc.c.Get(KEY_GIN_LOGGER_DEBUG)

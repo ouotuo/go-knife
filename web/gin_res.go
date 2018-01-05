@@ -10,6 +10,10 @@ import (
 
 var _P_ERROR_TYPE=reflect.TypeOf((*error)(nil))
 var _ERROR_TYPE=_P_ERROR_TYPE.Elem()
+
+var _P_IRESULT_INTERFACE=reflect.TypeOf((*IResult)(nil))
+var _IRESULT_INTERFACE=_P_IRESULT_INTERFACE.Elem()
+
 func CreateGinFunc(fun interface{})func(*gin.Context){
 	var funType=reflect.TypeOf(fun)
 
@@ -45,25 +49,30 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 		}
 		needContextWrap=true
 		var arg2=funType.In(1)
-		if arg2.Kind()!=reflect.Ptr{
+		if arg2.Kind()==reflect.Ptr{
+			needBindForm=true
+			formType=arg2
+		}else{
 			log.Fatalf("%s,arguments[1] should ptr to struct ",name)
 		}
-		needBindForm=true
-		formType=arg2
 	}else if numIn>2{
 		log.Fatalf("%s,arguments.len=%d > 2",name,numIn)
 	}
 
 	//check out
+	var isOutIResult bool
+	var out1=funType.Out(0)
 	if numOut==1{
 		//(error)
-		var out1=funType.Out(0)
-		if out1!=_ERROR_TYPE{
+		if out1==_ERROR_TYPE {
+			//error类型
+		}else if(out1.Implements(_IRESULT_INTERFACE)){
+			isOutIResult=true
+		}else{
 			log.Fatalf("%s,out[0] should error",name)
 		}
 	}else if numOut==2{
 		//(error,data)
-		var out1=funType.Out(0)
 		if out1!=_ERROR_TYPE{
 			log.Fatalf("%s,out[0] should error",name)
 		}
@@ -74,7 +83,12 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 	var funVal =reflect.ValueOf(fun)
 
 	return func(c *gin.Context) {
-		var result = &Result{}
+		var result IResult
+		if isOutIResult==false{
+			result = &Result{}
+		}else{
+			result=reflect.New(out1)
+		}
 
 		var arguments = make([]reflect.Value,numIn,numIn)
 		var err error
@@ -88,7 +102,7 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 				if ok{
 					result.SetErrSystemFail(err.Error())
 				}else{
-					result.SetErrSystemFail("error unknown type")
+					result.SetErrSystemFail("execute error,unknown type")
 				}
 				c.JSON(500,result)
 			}else if result.IsOk(){
@@ -121,6 +135,11 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 		result.SetOk(nil)
 
 		if numOut>0{
+			if isOutIResult{
+				result=outs[0]
+				return
+			}
+
 			//error
 			if outs[0].IsNil()==false{
 				result.SetErrExecute(fmt.Sprintf("%v",outs[0].Interface()))
@@ -137,8 +156,10 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 }
 
 func createFormValue(t reflect.Type)(v reflect.Value){
-	if t.Kind()==reflect.Map{
-		v=reflect.MakeMap(t)
+	if t.Kind()==reflect.Map {
+		v = reflect.MakeMap(t)
+	}else if t.Kind()==reflect.Slice{
+		v=reflect.MakeSlice(t,0,0)
 	}else{
 		v=reflect.New(t.Elem())
 	}
