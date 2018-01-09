@@ -84,11 +84,7 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 
 	return func(c *gin.Context) {
 		var result IResult
-		if isOutIResult==false{
-			result = &Result{}
-		}else{
-			result=reflect.New(out1)
-		}
+		result = &Result{}
 
 		var arguments = make([]reflect.Value,numIn,numIn)
 		var err error
@@ -135,8 +131,8 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 		result.SetOk(nil)
 
 		if numOut>0{
-			if isOutIResult{
-				result=outs[0]
+			if isOutIResult && outs[0].IsNil()==false{
+				result=outs[0].Interface().(IResult)
 				return
 			}
 
@@ -148,7 +144,7 @@ func CreateGinFunc(fun interface{})func(*gin.Context){
 		}
 		if numOut>1{
 			//data
-			if outs[1].IsNil()==false{
+			if outs[1].CanInterface() {
 				result.SetOk(outs[1].Interface())
 			}
 		}

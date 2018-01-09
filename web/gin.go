@@ -69,7 +69,7 @@ func( gc *ginReqContext)Bind(form interface{})(err error){
 		if isDebug=="true"{
 			var body string
 			bs,err:=json.Marshal(mapParams)
-			if err!=nil{
+			if err==nil{
 				body=string(bs)
 			}else{
 				body=fmt.Sprintf("json.Marshal mapParams error,%v",err)
