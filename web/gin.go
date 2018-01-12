@@ -36,15 +36,11 @@ func( gc *ginReqContext)Bind(form interface{})(err error){
 	switch contentType {
 	case gin.MIMEJSON:
 		err=ginBindJson(gc.c,form)
-		if err==nil{
-			err=bean.ValidBean(form)
-		}
-		return
-	case gin.MIMEPOSTForm,gin.MIMEMultipartPOSTForm:
+	//case gin.MIMEPOSTForm,gin.MIMEMultipartPOSTForm:
 	default:
+		err =gc.c.Request.ParseForm()
 	}
 
-	err =gc.c.Request.ParseForm()
 	if err!=nil{
 		return
 	}
@@ -62,6 +58,8 @@ func( gc *ginReqContext)Bind(form interface{})(err error){
 	if reflect.ValueOf(form).Kind()!=reflect.Slice{
 		err=bean.SetBeanMap(form,mapParams)
 	}
+
+	err=bean.ValidBean(form)
 
 	//log
 	isDebug,exists:=gc.c.Get(KEY_GIN_LOGGER_DEBUG)
