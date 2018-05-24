@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"encoding/json"
 	"github.com/ouotuo/go-knife/bean"
+	"github.com/sakeven/go-env"
+	log "github.com/sirupsen/logrus"
 )
 
 const DEFAULT_FILE  = "cfg.json"
@@ -39,4 +41,17 @@ func LoadFromJsonFileAndValid(file string,ptr interface{})(err error){
 func ToJson(ptr interface{})string{
 	bs,_:=json.Marshal(ptr)
 	return string(bs)
+}
+
+//file or env
+func Load(file string,ptr interface{})(err error){
+	if _,err:=os.Stat(file);err!=nil{
+		//load from env
+		log.Infof("load from env,%s",os.Environ())
+		err=env.Decode(ptr)
+	}else{
+		log.Infof("load from file,%s",file)
+		err=LoadFromJsonFile(file,ptr)
+	}
+	return
 }
